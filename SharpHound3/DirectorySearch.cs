@@ -100,8 +100,7 @@ namespace SharpHound3
         internal async Task<SearchResultEntry> GetOne(string ldapFilter, string[] props, SearchScope scope, string adsPath = null, bool globalCatalog = false)
         {
             var connection = globalCatalog ? GetGlobalCatalogConnection() : GetLdapConnection();
-            try
-            {
+     
                 var searchRequest = CreateSearchRequest(ldapFilter, scope, props, adsPath);
 
                 //Asynchronously send the search request
@@ -121,19 +120,8 @@ namespace SharpHound3
 
                 //Return the first search result entry
                 return response.Entries[0];
-            }
-            catch
-            {
-                return null;
-            }
-            finally
-            {
-                //Dispose the global catalog connection or add the connection back to the connection pool
-                if (!globalCatalog)
-                    _connectionPool.Add(connection);
-                else
-                    connection.Dispose();
-            }
+            
+           
         }
 
         /// <summary>
@@ -331,6 +319,13 @@ namespace SharpHound3
             var identifier = new LdapDirectoryIdentifier(domainController, 3268);
             var connection = Options.Instance.LdapUsername != null ? new LdapConnection(identifier, new NetworkCredential(Options.Instance.LdapUsername, Options.Instance.LdapPassword)) : new LdapConnection(identifier);
 
+
+            if (Options.Instance.ForceBasicAuthentication)
+            {
+                connection.AuthType = AuthType.Basic;
+                connection.SessionOptions.VerifyServerCertificate = (ldapConnection, certificate) => true;  // do not verify the certificate. Required for avoiding "the LDAP server is unavailable" errors in LDAPS basic auth configuration
+            }
+
             var ldapSessionOptions = connection.SessionOptions;
             if (!Options.Instance.DisableKerberosSigning)
             {
@@ -356,9 +351,16 @@ namespace SharpHound3
             var port = Options.Instance.LdapPort == 0
                 ? (Options.Instance.SecureLDAP ? 636 : 389)
                 : Options.Instance.LdapPort;
+
             var identifier = new LdapDirectoryIdentifier(domainController, port, false, false);
 
             connection = Options.Instance.LdapUsername != null ? new LdapConnection(identifier, new NetworkCredential(Options.Instance.LdapUsername, Options.Instance.LdapPassword)) : new LdapConnection(identifier);
+
+            if (Options.Instance.ForceBasicAuthentication)
+            {
+                connection.AuthType = AuthType.Basic;
+            }
+            connection.SessionOptions.VerifyServerCertificate = (ldapConnection, certificate) => true; // do not verify the certificate. Required for avoiding "the LDAP server is unavailable" errors in LDAPS basic auth configuration
 
             var ldapSessionOptions = connection.SessionOptions;
             if (!Options.Instance.DisableKerberosSigning)
