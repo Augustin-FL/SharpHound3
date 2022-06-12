@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.DirectoryServices.ActiveDirectory;
@@ -331,6 +331,12 @@ namespace SharpHound3
             var identifier = new LdapDirectoryIdentifier(domainController, 3268);
             var connection = Options.Instance.LdapUsername != null ? new LdapConnection(identifier, new NetworkCredential(Options.Instance.LdapUsername, Options.Instance.LdapPassword)) : new LdapConnection(identifier);
 
+            if (Options.Instance.ForceBasicAuthentication)
+            {
+                connection.AuthType = AuthType.Basic;
+                connection.SessionOptions.VerifyServerCertificate = (ldapConnection, certificate) => true;  // do not verify the certificate. Required for avoiding "the LDAP server is unavailable" errors in LDAPS basic auth configuration
+            }
+
             var ldapSessionOptions = connection.SessionOptions;
             if (!Options.Instance.DisableKerberosSigning)
             {
@@ -359,6 +365,12 @@ namespace SharpHound3
             var identifier = new LdapDirectoryIdentifier(domainController, port, false, false);
 
             connection = Options.Instance.LdapUsername != null ? new LdapConnection(identifier, new NetworkCredential(Options.Instance.LdapUsername, Options.Instance.LdapPassword)) : new LdapConnection(identifier);
+
+            if (Options.Instance.ForceBasicAuthentication)
+            {
+                connection.AuthType = AuthType.Basic;
+            }
+            connection.SessionOptions.VerifyServerCertificate = (ldapConnection, certificate) => true; // do not verify the certificate. Required for avoiding "the LDAP server is unavailable" errors in LDAPS basic auth configuration
 
             var ldapSessionOptions = connection.SessionOptions;
             if (!Options.Instance.DisableKerberosSigning)
